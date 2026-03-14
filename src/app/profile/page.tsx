@@ -39,13 +39,23 @@ export default function ProfilePage() {
       <div className="px-6 py-6 border-b border-gray-100 bg-white">
         <div className="bg-gray-100 p-1 rounded-xl flex items-center shadow-inner">
           <button 
-            onClick={() => setRole("customer")}
+            onClick={() => {
+              setRole("customer");
+              if (typeof window !== "undefined") {
+                window.localStorage.setItem("noidastay_role", "tenant");
+              }
+            }}
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${role === 'customer' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
           >
             Customer
           </button>
           <button 
-            onClick={() => setRole("owner")}
+            onClick={() => {
+              setRole("owner");
+              if (typeof window !== "undefined") {
+                window.localStorage.setItem("noidastay_role", "owner");
+              }
+            }}
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${role === 'owner' ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}
           >
             Owner
@@ -116,27 +126,6 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-20 pb-safe">
-        <div className="max-w-md mx-auto px-6 h-16 flex items-center justify-between text-xs font-medium text-gray-500">
-          <Link href="/" className="flex flex-col items-center gap-1 hover:text-gray-900 transition-colors">
-            <Search className="h-6 w-6" />
-            <span>Explore</span>
-          </Link>
-          <button className="flex flex-col items-center gap-1 hover:text-gray-900 transition-colors">
-            <Heart className="h-6 w-6" />
-            <span>Favorites</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 hover:text-gray-900 transition-colors">
-            <Bell className="h-6 w-6" />
-            <span>Updates</span>
-          </button>
-          <Link href="/profile" className="flex flex-col items-center gap-1 text-emerald-600 transition-colors">
-            <User className="h-6 w-6" />
-            <span>Profile</span>
-          </Link>
-        </div>
-      </div>
     </main>
   );
 }

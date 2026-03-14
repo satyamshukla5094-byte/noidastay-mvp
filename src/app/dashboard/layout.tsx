@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, MessageSquare, Settings, Users, ArrowLeft } from "lucide-react";
+import { Home, MessageSquare, Settings, Users, ArrowLeft, Heart, Inbox, IdCard } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function DashboardLayout({
   children,
@@ -10,13 +11,31 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const [role, setRole] = useState<"owner" | "tenant">("tenant");
 
-  const navLinks = [
-    { name: "Overview", href: "/dashboard", icon: Home },
-    { name: "Leads & Inquiries", href: "/dashboard/leads", icon: MessageSquare },
-    { name: "Tenants", href: "/dashboard/tenants", icon: Users },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
-  ];
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("noidastay_role");
+    if (stored === "owner" || stored === "tenant") {
+      setRole(stored);
+    }
+  }, []);
+
+  const navLinks =
+    role === "owner"
+      ? [
+          { name: "Overview", href: "/dashboard", icon: Home },
+          { name: "Leads & Inquiries", href: "/dashboard/leads", icon: MessageSquare },
+          { name: "Tenants", href: "/dashboard/tenants", icon: Users },
+          { name: "Favorites", href: "/dashboard/favorites", icon: Heart },
+          { name: "Settings", href: "/dashboard/settings", icon: Settings },
+        ]
+      : [
+          { name: "Favorites", href: "/dashboard/favorites", icon: Heart },
+          { name: "My Inquiries", href: "/dashboard/inquiries", icon: Inbox },
+          { name: "Tenant Profile", href: "/dashboard/tenant-profile", icon: IdCard },
+          { name: "Settings", href: "/dashboard/settings", icon: Settings },
+        ];
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -27,7 +46,9 @@ export default function DashboardLayout({
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Homepage
           </Link>
-          <h2 className="text-xl font-bold text-emerald-600">NoidaStay Owner</h2>
+          <h2 className="text-xl font-bold text-emerald-600">
+            {role === "owner" ? "NoidaStay Owner" : "NoidaStay Tenant"}
+          </h2>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           {navLinks.map((link) => {

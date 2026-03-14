@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
-// Setup Supabase client for testing
-// In a real environment, you'd use testing environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder";
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Setup Supabase client for testing (only when env vars are present)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null;
 
 test.describe('The Data Audit', () => {
   test('Verify activity_logs insertion on Show Number click', async ({ page, request }) => {
@@ -43,7 +45,7 @@ test.describe('The Data Audit', () => {
       // Wait for async insertion
       await page.waitForTimeout(1000); 
 
-      const { data, error } = await supabase
+      const { data, error } = await supabase!
         .from('activity_logs')
         .select('*')
         .eq('metadata->>property_id', requestData.propertyId)

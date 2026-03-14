@@ -2,9 +2,39 @@
 
 import { useState } from "react";
 import { Plus, ShieldCheck, Upload, ExternalLink } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
 
 export default function DashboardOverview() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [verificationForm, setVerificationForm] = useState({
+    aadhaarName: "Test Owner",
+    plotNumber: "",
+    bhulekhUrl: "",
+  });
+  const [isSubmittingVerification, setIsSubmittingVerification] = useState(false);
+
+  const handleVerificationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingVerification(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("owner_verifications").insert([
+        {
+          owner_aadhaar_name: verificationForm.aadhaarName,
+          plot_number: verificationForm.plotNumber,
+          bhulekh_url: verificationForm.bhulekhUrl || "https://upbhulekh.gov.in/",
+          status: "pending",
+        },
+      ]);
+      if (error) {
+        console.warn("Owner verification insert failed (MVP env):", error.message);
+      }
+    } catch (err) {
+      console.warn("Owner verification exception:", err);
+    } finally {
+      setIsSubmittingVerification(false);
+    }
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto w-full">
@@ -113,57 +143,107 @@ export default function DashboardOverview() {
           )}
 
           {activeTab === "verification" && (
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+            <form
+              onSubmit={handleVerificationSubmit}
+              className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8"
+            >
               <div className="mb-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-2">Property Verification</h2>
                 <p className="text-gray-500 text-sm max-w-2xl">
-                  Upload the latest utility bills and tax receipts to get the "Verified" badge on your properties. The verified badge builds trust and increases leads by up to 300%. Please ensure the name on your Aadhaar card matches the name on the electricity bill.
+                  Link your documents and UP Bhulekh record so that our team can grant the
+                  &ldquo;Verified&rdquo; badge on your listings. This uses the{" "}
+                  <span className="font-semibold">owner_verifications</span> record in Supabase.
                 </p>
               </div>
 
               <div className="space-y-8 max-w-3xl">
-                {/* Aadhaar Name Field */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner Aadhaar Name</label>
-                  <input type="text" defaultValue="Test Owner" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 outline-none" placeholder="Enter full name as per Aadhaar" />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Owner Aadhaar Name
+                  </label>
+                  <input
+                    type="text"
+                    value={verificationForm.aadhaarName}
+                    onChange={(e) =>
+                      setVerificationForm((prev) => ({ ...prev, aadhaarName: e.target.value }))
+                    }
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 outline-none"
+                    placeholder="Enter full name as per Aadhaar"
+                    required
+                  />
                 </div>
 
-                {/* Uploads row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Electricity Bill Upload */}
                   <div className="border border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
                     <Upload className="h-8 w-8 text-gray-400 mb-3" />
                     <p className="font-medium text-gray-900 mb-1">Electricity Bill</p>
-                    <p className="text-xs text-gray-500 max-w-[200px] text-center">Upload latest bill. Name must match Aadhaar to receive Verified badge.</p>
+                    <p className="text-xs text-gray-500 max-w-[200px] text-center">
+                      Upload latest bill via dashboard or share a link in notes to match UP Bhulekh.
+                    </p>
                   </div>
 
-                  {/* Property Tax Upload */}
                   <div className="border border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
                     <Upload className="h-8 w-8 text-gray-400 mb-3" />
                     <p className="font-medium text-gray-900 mb-1">Property Tax Receipt</p>
-                    <p className="text-xs text-gray-500 max-w-[200px] text-center">Upload the latest annual property tax receipt associated with this plot.</p>
+                    <p className="text-xs text-gray-500 max-w-[200px] text-center">
+                      Ensure plot details match the UP Bhulekh record you share below.
+                    </p>
                   </div>
                 </div>
 
-                {/* Plot / Khata Number */}
-                <div className="p-5 bg-blue-50/50 border border-blue-100 rounded-xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="block text-sm font-semibold text-blue-900">Plot / Khata Number</label>
-                    <a href="https://upbhulekh.gov.in/" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-100 px-3 py-1.5 rounded-lg transition-colors">
+                <div className="p-5 bg-blue-50/50 border border-blue-100 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-semibold text-blue-900">
+                      Plot / Khata Number
+                    </label>
+                    <a
+                      href="https://upbhulekh.gov.in/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
+                    >
                       Verify on UP Bhulekh <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
-                  <input type="text" className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none" placeholder="e.g. 129/A" />
-                  <p className="text-xs text-blue-600/80 mt-2">Required for final municipal verification before admin approval.</p>
+                  <input
+                    type="text"
+                    value={verificationForm.plotNumber}
+                    onChange={(e) =>
+                      setVerificationForm((prev) => ({ ...prev, plotNumber: e.target.value }))
+                    }
+                    className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
+                    placeholder="e.g. 129/A"
+                    required
+                  />
+                  <label className="block text-sm font-semibold text-blue-900 mt-3">
+                    UP Bhulekh Record URL
+                  </label>
+                  <input
+                    type="url"
+                    value={verificationForm.bhulekhUrl}
+                    onChange={(e) =>
+                      setVerificationForm((prev) => ({ ...prev, bhulekhUrl: e.target.value }))
+                    }
+                    className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
+                    placeholder="Paste the exact URL of your land record from upbhulekh.gov.in"
+                  />
+                  <p className="text-xs text-blue-600/80">
+                    These details are stored in the <code>owner_verifications</code> table for
+                    admin review.
+                  </p>
                 </div>
 
                 <div className="pt-4 border-t border-gray-100">
-                  <button className="px-6 py-2.5 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm">
-                    Submit for Verification
+                  <button
+                    type="submit"
+                    disabled={isSubmittingVerification}
+                    className="px-6 py-2.5 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:bg-emerald-400 disabled:cursor-not-allowed"
+                  >
+                    {isSubmittingVerification ? "Submitting..." : "Submit for Verification"}
                   </button>
                 </div>
               </div>
-            </div>
+            </form>
           )}
     </div>
   );

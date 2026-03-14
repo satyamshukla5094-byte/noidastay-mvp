@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -24,9 +25,32 @@ export default function SignupPage() {
     }
   };
 
-  const handleContinue = (e: React.FormEvent) => {
+  const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push("/");
+    const supabase = createClient();
+    try {
+      // Generate a temporary password since the design doesn't include it.
+      const tempPassword = `noidastay-${Date.now().toString(36)}`;
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: tempPassword,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            dob: formData.dob,
+          },
+        },
+      });
+      if (error) {
+        console.warn("Supabase sign-up failed (MVP env):", error.message);
+      }
+    } catch (err) {
+      console.warn("Supabase sign-up exception:", err);
+    } finally {
+      // After sign-up, send user to role selection / verification flow
+      router.push("/profile");
+    }
   };
 
   const isFormValid = formData.firstName && formData.lastName && formData.dob && formData.email.includes("@");

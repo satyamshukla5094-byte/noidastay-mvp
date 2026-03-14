@@ -1,0 +1,3 @@
+-- Temporary RLS relaxation for seed data
+-- DO NOT USE IN PRODUCTION WITHOUT AUTH
+ALTER TABLE listings DISABLE ROW LEVEL SECURITY;

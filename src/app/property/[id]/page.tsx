@@ -20,6 +20,7 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
   const [showGallery, setShowGallery] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [isLoggingNumber, setIsLoggingNumber] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   const { track } = useTracker();
 
   // Track property view on component mount
@@ -27,6 +28,18 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
     const pId = resolvedParams.id;
     if (pId) {
       track("view_property", { property_id: pId });
+      // Initialize favorite + inquiry state from localStorage
+      if (typeof window !== "undefined") {
+        const storedFavorites = window.localStorage.getItem("noidastay_favorites");
+        if (storedFavorites) {
+          try {
+            const parsed = JSON.parse(storedFavorites) as string[];
+            setIsFavorite(parsed.includes(pId));
+          } catch {
+            // ignore parse errors
+          }
+        }
+      }
     }
   }, [resolvedParams.id, track]);
 
@@ -39,6 +52,21 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
     const phoneNumber = "919999999999";
     const message = `Hi, I'm interested in the PG in ${property?.sector} I saw on NoidaStay!`;
     const encodedMessage = encodeURIComponent(message);
+    // Persist inquiry locally for tenant dashboard
+    if (typeof window !== "undefined") {
+      try {
+        const existing = window.localStorage.getItem("noidastay_inquiries");
+        const parsed = existing ? JSON.parse(existing) as any[] : [];
+        parsed.push({
+          propertyId: property?.id,
+          method: "whatsapp",
+          at: new Date().toISOString(),
+        });
+        window.localStorage.setItem("noidastay_inquiries", JSON.stringify(parsed));
+      } catch {
+        // ignore
+      }
+    }
     window.open(`https://wa.me/${phoneNumber}?text=${encodedMessage}`, "_blank");
   };
 
@@ -61,6 +89,40 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
     } finally {
       setIsLoggingNumber(false);
       setShowPhone(true);
+      // Persist inquiry locally for tenant dashboard
+      if (typeof window !== "undefined") {
+        try {
+          const existing = window.localStorage.getItem("noidastay_inquiries");
+          const parsed = existing ? JSON.parse(existing) as any[] : [];
+          parsed.push({
+            propertyId: property.id,
+            method: "view_phone",
+            at: new Date().toISOString(),
+          });
+          window.localStorage.setItem("noidastay_inquiries", JSON.stringify(parsed));
+        } catch {
+          // ignore
+        }
+      }
+    }
+  };
+
+  const toggleFavorite = () => {
+    if (typeof window === "undefined") return;
+    try {
+      const existing = window.localStorage.getItem("noidastay_favorites");
+      const parsed = existing ? (JSON.parse(existing) as string[]) : [];
+      let next: string[];
+      if (parsed.includes(property.id)) {
+        next = parsed.filter((id) => id !== property.id);
+        setIsFavorite(false);
+      } else {
+        next = [...parsed, property.id];
+        setIsFavorite(true);
+      }
+      window.localStorage.setItem("noidastay_favorites", JSON.stringify(next));
+    } catch {
+      // ignore
     }
   };
 
@@ -328,6 +390,17 @@ export default function PropertyPage({ params }: { params: Promise<{ id: string 
                   <span>3 Months</span>
                 </div>
               </div>
+
+              <button
+                onClick={toggleFavorite}
+                className={`w-full mb-3 flex items-center justify-center gap-2 border py-3 rounded-xl font-medium transition-colors ${
+                  isFavorite
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                    : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"
+                }`}
+              >
+                <span>{isFavorite ? "Saved to Favorites" : "Save to Favorites"}</span>
+              </button>
 
               <button 
                 className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-semibold transition-colors text-lg mb-3 shadow-sm shadow-emerald-600/20"

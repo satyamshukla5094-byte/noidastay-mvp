@@ -17,10 +17,17 @@ export const useTracker = () => {
             }
           ]);
         if (error) {
-           console.error("[Tracker Error]:", error.message);
+          // In local dev with placeholder keys or missing migrations,
+          // this will often fail. Treat it as a soft warning instead
+          // of breaking the UI with a red overlay.
+          if (process.env.NODE_ENV === 'development') {
+            console.warn("[Tracker Warning]:", error.message);
+          }
         }
       } catch (err: any) {
-        console.error("[Tracker Exception]:", err);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn("[Tracker Exception]:", err);
+        }
       }
     };
     
