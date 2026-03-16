@@ -7,27 +7,22 @@ declare global {
 }
 
 export async function loadRazorpay(): Promise<any> {
-  return new Promise((resolve, reject) => {
-    if (window.Razorpay) {
-      resolve(window.Razorpay);
-      return;
-    }
+  if (window.Razorpay) {
+    return window.Razorpay;
+  }
 
-    const script = loadScript(
+  try {
+    await loadScript(
       "https://checkout.razorpay.com/v1/checkout.js",
       "razorpay-script"
     );
-
-    script.onload = () => {
-      if (window.Razorpay) {
-        resolve(window.Razorpay);
-      } else {
-        reject(new Error("Failed to load Razorpay"));
-      }
-    };
-
-    script.onerror = () => {
-      reject(new Error("Failed to load Razorpay script"));
-    };
-  });
+    
+    if (window.Razorpay) {
+      return window.Razorpay;
+    } else {
+      throw new Error("Razorpay object not found after script load");
+    }
+  } catch (error) {
+    throw new Error("Failed to load Razorpay script");
+  }
 }

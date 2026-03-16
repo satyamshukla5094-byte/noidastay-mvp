@@ -16,7 +16,7 @@ export const DynamicMap = dynamic(
 );
 
 export const DynamicKYCScanner = dynamic(
-  () => import("@/components/KYCScanner").then((mod) => mod.KYCScanner),
+  () => import("@/components/KYCScanner").then((mod) => mod.default),
   {
     loading: () => (
       <div className="flex items-center justify-center h-64 bg-gray-100 rounded-xl">
@@ -28,7 +28,7 @@ export const DynamicKYCScanner = dynamic(
 );
 
 export const DynamicVisitScheduler = dynamic(
-  () => import("@/components/VisitScheduler").then((mod) => mod.VisitScheduler),
+  () => import("@/components/VisitScheduler").then((mod) => mod.default),
   {
     loading: () => (
       <div className="flex items-center justify-center h-48 bg-gray-100 rounded-xl">
@@ -40,7 +40,7 @@ export const DynamicVisitScheduler = dynamic(
 );
 
 export const DynamicReviewModal = dynamic(
-  () => import("@/components/ReviewModal").then((mod) => mod.ReviewModal),
+  () => import("@/components/ReviewModal").then((mod) => mod.default),
   {
     loading: () => (
       <div className="flex items-center justify-center h-48 bg-gray-100 rounded-xl">

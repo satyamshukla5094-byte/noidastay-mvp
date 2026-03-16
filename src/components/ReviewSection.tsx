@@ -5,7 +5,7 @@ import { Star, Send, Loader2, CheckCircle2, ShieldCheck, Wifi, Coffee, UserCheck
 import ReviewModal from "@/components/ReviewModal";
 import { createClient } from "@/utils/supabase/client";
 
-interface Review {
+export interface Review {
   id: string;
   user_id: string;
   rating: number;
