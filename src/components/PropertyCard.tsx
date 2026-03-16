@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { CheckCircle2, MapPin, MessageCircle } from "lucide-react";
+import { CheckCircle2, MapPin, MessageCircle, Zap, Badge } from "lucide-react";
+import Link from "next/link";
+import DigiLockerBadge from "@/components/DigiLockerBadge";
 
 interface PropertyCardProps {
   id: string;
@@ -15,6 +17,7 @@ interface PropertyCardProps {
   ownerBillName?: string;
   verificationStatus?: string;
   isVerified?: boolean;
+  userId?: string;
 }
 
 export function PropertyCard({
@@ -28,6 +31,7 @@ export function PropertyCard({
   ownerBillName,
   verificationStatus,
   isVerified,
+  userId,
 }: PropertyCardProps) {
   const [isLoggingLead, setIsLoggingLead] = useState(false);
 
@@ -74,12 +78,21 @@ export function PropertyCard({
     <div className="group flex flex-col gap-3 rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl bg-white border border-transparent hover:border-gray-100 pb-3 h-full cursor-pointer">
       {/* Image Container with Aspect Ratio */}
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-2xl bg-gray-200">
+        {/* DigiLocker Badge for verified owners */}
+        {userId && (
+          <div className="absolute top-2 left-2 z-10">
+            <DigiLockerBadge userId={userId} showLabel={false} size="sm" />
+          </div>
+        )}
+        
         <Image
           src={imageUrl}
           alt={title}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/8A8A"
         />
         {/* Badges */}
         {isActuallyVerified ? (
@@ -106,28 +119,34 @@ export function PropertyCard({
           </div>
         </div>
 
-          <div className="flex items-baseline gap-1">
-            <span className="text-xl font-bold text-emerald-600">
-              ₹{price.toLocaleString("en-IN")}
-            </span>
-            <span className="text-sm text-gray-500 font-medium">/mo</span>
-          </div>
+        <div className="flex items-baseline gap-1">
+          <span className="text-xl font-bold text-emerald-600">
+            ₹{price.toLocaleString("en-IN")}
+          </span>
+          <span className="text-sm text-gray-500 font-medium">/mo</span>
+        </div>
 
           <div className="mt-2 rounded-xl border border-violet-200 bg-violet-50/60 p-2 text-xs text-violet-700 font-medium">
             <div className="flex items-center gap-1"><span className="text-yellow-600">★</span> NoidaStay Verified Broker</div>
             <div className="mt-1 text-[11px] text-gray-600">Brokerage Fee ₹499 covers legal paperwork, escrow protection, and move-in support.</div>
           </div>
 
-          <div 
-            role="button"
-            tabIndex={0}
-            onClick={handleContactClick}
-            className={`w-full flex items-center justify-center gap-2 ${isLoggingLead ? 'opacity-70 cursor-not-allowed' : ''} bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-medium transition-colors text-sm`}
-          >
-            <MessageCircle className="h-4 w-4" />
-            {isLoggingLead ? "Connecting..." : "Contact Owner"}
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              href={`/checkout/wizard/${id}`}
+              className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-medium transition-colors text-sm"
+            >
+              <Zap className="h-4 w-4" />
+              Book Now
+            </Link>
+            <button 
+              onClick={handleContactClick}
+              className={`flex items-center justify-center gap-2 ${isLoggingLead ? 'opacity-70 cursor-not-allowed' : ''} bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-medium transition-colors text-sm`}
+            >
+              <MessageCircle className="h-4 w-4" />
+              {isLoggingLead ? "Connecting..." : "Contact"}
+            </button>
           </div>
-        </div>
       </div>
     </div>
   );

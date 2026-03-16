@@ -1,4 +1,9 @@
-import Home from "@/app/page";
+import DiscoveryEngine from "@/components/DiscoveryEngine";
 
-export default Home;
-
+export default function SearchPage() {
+  return (
+    <main className="min-h-screen bg-slate-50">
+      <DiscoveryEngine />
+    </main>
+  );
+}

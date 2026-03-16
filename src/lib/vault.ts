@@ -20,6 +20,67 @@ export async function ensureVaultBucket() {
   }
 }
 
+export async function getSignedUrl(filePath: string) {
+  const adminSupabase = getAdminSupabase();
+  const { data, error } = await adminSupabase.storage
+    .from(VAULT_BUCKET)
+    .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function uploadToVault({
+  fileBuffer,
+  userId,
+  fileName,
+  contentType,
+  metadata
+}: {
+  fileBuffer: Buffer;
+  userId: string;
+  fileName: string;
+  contentType: string;
+  metadata?: any;
+}) {
+  const adminSupabase = getAdminSupabase();
+  await ensureVaultBucket();
+
+  const filePath = `${userId}/${fileName}`;
+  const { error: uploadError } = await adminSupabase.storage
+    .from(VAULT_BUCKET)
+    .upload(filePath, fileBuffer, {
+      contentType,
+      upsert: true,
+      metadata
+    });
+
+  if (uploadError) throw uploadError;
+  return filePath;
+}
+
+export async function moveToVault({
+  fileBuffer,
+  userId,
+  fileName,
+  contentType,
+  metadata
+}: {
+  fileBuffer: Buffer;
+  userId: string;
+  fileName: string;
+  contentType: string;
+  metadata?: any;
+}) {
+  return uploadToVault({
+    fileBuffer,
+    userId,
+    fileName,
+    contentType,
+    metadata
+  });
+}
+
 export async function uploadSignedAgreement({
   pdfBuffer,
   userId,

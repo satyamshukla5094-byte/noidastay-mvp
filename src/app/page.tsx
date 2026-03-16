@@ -15,10 +15,9 @@ export default async function Home() {
     id: p.id,
     title: p.title,
     price: Number(p.price),
-    imageUrl: Array.isArray(p.images) && p.images[0] ? p.images[0] : "/placeholder.jpg",
-    isVerified: !!p.is_verified,
-    sector: p.sector || "",
-    distanceInfo: p.lat && p.lng ? `${Number(p.lat).toFixed(3)}, ${Number(p.lng).toFixed(3)}` : "",
+    location: p.sector || "",
+    image_url: Array.isArray(p.images) && p.images[0] ? p.images[0] : "/placeholder.jpg",
+    is_verified: !!p.is_verified,
   }));
   // If the properties table is missing, PostgREST will return an error like
   // "Could not find the table 'public.properties' in the schema cache".

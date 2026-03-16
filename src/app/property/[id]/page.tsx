@@ -3,10 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { ArrowLeft, CheckCircle2, Heart, MapPin, MessageCircle, Phone, Share2, ShieldCheck } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import ReviewSection from "@/components/ReviewSection";
-import dynamic from "next/dynamic";
+import { generatePropertySchema, generateLocalBusinessSchema } from "@/lib/seo/schema";
+import Script from "next/script";
+import ParentStayBooking from "@/components/ParentStayBooking";
+import QuickChatModal from "@/components/QuickChatModal";
+import LiveActivityTracker from "@/components/LiveActivityTracker";
+import SocialProofPopups from "@/components/SocialProofPopups";
+import CountdownTimer from "@/components/CountdownTimer";
+import VisitScheduler from "@/components/VisitScheduler";
 
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
@@ -32,6 +40,9 @@ interface Property {
   lng?: number;
   amenities?: string[];
   distanceInfo?: string;
+  has_parent_room?: boolean;
+  parent_guest_room_price?: number;
+  remaining_rooms?: number;
 }
 
 export default function PropertyPage() {
@@ -48,6 +59,24 @@ export default function PropertyPage() {
   const [favLoading, setFavLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userKycStatus, setUserKycStatus] = useState<"pending" | "verified" | "rejected">("pending");
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [flashDeal, setFlashDeal] = useState<any>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    async function checkFlashDeal() {
+      const { data } = await supabase
+        .from("flash_deals")
+        .select("*")
+        .eq("property_id", propertyId)
+        .gt("expires_at", new Date().toISOString())
+        .limit(1)
+        .maybeSingle();
+      
+      if (data) setFlashDeal(data);
+    }
+    checkFlashDeal();
+  }, [propertyId]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -77,6 +106,9 @@ export default function PropertyPage() {
         amenities: Array.isArray(data.amenities) ? data.amenities : ["24/7 Security", "Free WiFi", "Housekeeping"],
         distanceInfo:
           data.distance_info || data.distanceInfo || (data.lat && data.lng ? `${Number(data.lat).toFixed(3)}, ${Number(data.lng).toFixed(3)}` : "Near main road"),
+        has_parent_room: !!data.has_parent_room,
+        parent_guest_room_price: data.parent_guest_room_price,
+        remaining_rooms: data.remaining_rooms
       };
       setProperty(item);
       setLoading(false);
@@ -155,8 +187,21 @@ export default function PropertyPage() {
       property.is_verified
   );
 
+  const productSchema = generatePropertySchema(property, []); // In real app, fetch reviews
+  const businessSchema = generateLocalBusinessSchema(property);
+
   return (
     <main className="min-h-screen bg-white pb-24">
+      <Script
+        id="property-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
+      <Script
+        id="business-schema"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(businessSchema) }}
+      />
       <div className="sticky top-16 z-20 bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors font-medium">
@@ -175,7 +220,10 @@ export default function PropertyPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{property.title}</h1>
+          <div className="flex justify-between items-start">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{property.title}</h1>
+            {flashDeal && <CountdownTimer expiresAt={flashDeal.expires_at} />}
+          </div>
           <div className="flex flex-wrap items-center text-gray-600 gap-3 text-sm mt-2">
             <div className="flex items-center"><MapPin className="h-4 w-4 mr-1 text-gray-400" />{property.sector} • {property.distanceInfo}</div>
             {userKycStatus === "verified" && (
@@ -202,10 +250,110 @@ export default function PropertyPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
-            <section className="mb-8"><h2 className="text-2xl font-semibold mb-4">About this place</h2><p className="text-gray-600 leading-relaxed text-lg mb-6">{property.description}</p><div className="bg-gray-50 border border-gray-200 rounded-2xl p-6"><h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center"><ShieldCheck className="h-5 w-5 mr-2 text-emerald-600" />Verification Details</h3><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="flex items-start gap-3"><div className={`mt-0.5 rounded-full p-1 ${property.ownerAadhaarName ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-400"}`}><CheckCircle2 className="h-4 w-4" /></div><div><p className={`font-medium ${property.ownerAadhaarName ? "text-gray-900" : "text-gray-500"}`}>Aadhaar Verified</p><p className="text-sm text-gray-500">Identity checked against Govt records.</p></div></div><div className="flex items-start gap-3"><div className={`mt-0.5 rounded-full p-1 ${property.ownerBillName ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-400"}`}><CheckCircle2 className="h-4 w-4" /></div><div><p className={`font-medium ${property.ownerBillName ? "text-gray-900" : "text-gray-500"}`}>Property Records Verified</p><p className="text-sm text-gray-500">Utility bills & tax receipts checked.</p></div></div></div></div></section><hr className="border-gray-200 my-8" /><section className="mb-8"><h2 className="text-2xl font-semibold mb-6">What this place offers</h2><div className="grid grid-cols-2 gap-y-4 gap-x-8">{(property.amenities ?? ["24/7 Security", "Free WiFi", "Housekeeping"]).map((amenity, index) => <div key={index} className="flex items-center text-gray-700"><CheckCircle2 className="h-5 w-5 text-emerald-600 mr-3" /> <span>{amenity}</span></div>)}</div></section><hr className="border-gray-200 my-8" /><section className="mb-8 hidden sm:block"><h2 className="text-2xl font-semibold mb-6">Location</h2><Map properties={[{ id: property.id, lat: Number(property.lat) || 0, lng: Number(property.lng) || 0, title: property.title, price: property.price, is_verified: property.is_verified ?? false, images: property.images ?? [] }]} /></section><hr className="border-gray-200 my-8" /><ReviewSection propertyId={property.id} /></div>
-          <div className="relative"><div className="sticky top-28 bg-white border border-gray-200 rounded-2xl p-6 shadow-xl shadow-gray-200/50"><div className="flex items-baseline gap-1 mb-3"><span className="text-3xl font-bold text-gray-900">₹{property.price.toLocaleString("en-IN")}</span><span className="text-gray-500 font-medium">/ month</span></div><div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-3 mb-3 text-sm text-purple-900"><div className="font-semibold">NoidaStay Verified Broker Guarantee</div><div className="mt-2 text-gray-700 leading-relaxed"><strong className="font-semibold text-gray-900">As your Digital Broker, we guarantee:</strong><ul className="list-disc pl-4 mt-1 space-y-0.5"><li>Legal Rent Agreement</li><li>Escrow Deposit Protection</li><li>24h Move-in Support</li></ul></div></div><div className="rounded-xl border border-amber-300 bg-amber-50 p-3 mb-4 text-sm text-amber-900"><div className="font-semibold">Brokerage Service Fee ₹499</div><div className="mt-1 text-gray-700">This covers your e-Stamping, legal paperwork, and deposit protection.</div></div><div className="border border-gray-200 rounded-xl mb-6 divide-y divide-gray-200 text-sm"><div className="p-4 bg-gray-50 rounded-t-xl flex justify-between"><span className="font-medium">Move-in Date</span><span className="text-emerald-600 font-medium">Available Now</span></div><div className="p-4 flex justify-between items-center"><span className="font-medium text-gray-500">Deposit</span><span>1 Month Rent</span></div><div className="p-4 flex justify-between items-center"><span className="font-medium text-gray-500">Lock-in</span><span>3 Months</span></div></div><button onClick={() => router.push(`/my-stay?propertyId=${property.id}`)} className="w-full mb-3 flex items-center justify-center gap-2 bg-purple-800 hover:bg-purple-900 text-white py-3 rounded-xl font-semibold transition-colors"><ShieldCheck className="h-4 w-4" />Book with NoidaStay</button><button onClick={toggleFavorite} disabled={favLoading} className={`w-full mb-3 flex items-center justify-center gap-2 border py-3 rounded-xl font-medium transition-colors ${isFavorite ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"}`}><Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />{isFavorite ? "Saved to Favorites" : "Save to Favorites"}</button><button className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold transition-colors text-lg mb-3" onClick={handleContactOwner}><MessageCircle className="h-5 w-5" />Contact via WhatsApp</button><button onClick={handleShowNumber} disabled={showPhone || isLoggingNumber} className={`w-full flex items-center justify-center gap-2 bg-white border ${showPhone ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-gray-300 hover:bg-gray-50 text-gray-900"} py-3 rounded-xl font-medium transition-colors`}>{showPhone ? "+91 99999 99999" : isLoggingNumber ? "Loading..." : "Show Number"}</button><button onClick={() => navigator.clipboard.writeText(window.location.href)} className="w-full mt-3 flex items-center justify-center gap-2 border border-gray-200 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors"><Share2 className="h-4 w-4" />Share this PG</button></div></div>
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold mb-4">About this place</h2>
+              <p className="text-gray-600 leading-relaxed text-lg mb-6">{property.description}</p>
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center"><ShieldCheck className="h-5 w-5 mr-2 text-emerald-600" />Verification Details</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 rounded-full p-1 ${property.ownerAadhaarName ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-400"}`}><CheckCircle2 className="h-4 w-4" /></div>
+                    <div><p className={`font-medium ${property.ownerAadhaarName ? "text-gray-900" : "text-gray-500"}`}>Aadhaar Verified</p><p className="text-sm text-gray-500">Identity checked against Govt records.</p></div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 rounded-full p-1 ${property.ownerBillName ? "bg-emerald-100 text-emerald-600" : "bg-gray-100 text-gray-400"}`}><CheckCircle2 className="h-4 w-4" /></div>
+                    <div><p className={`font-medium ${property.ownerBillName ? "text-gray-900" : "text-gray-500"}`}>Property Records Verified</p><p className="text-sm text-gray-500">Utility bills & tax receipts checked.</p></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <hr className="border-gray-200 my-8" />
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold mb-6">What this place offers</h2>
+              <div className="grid grid-cols-2 gap-y-4 gap-x-8">{(property.amenities ?? ["24/7 Security", "Free WiFi", "Housekeeping"]).map((amenity, index) => <div key={index} className="flex items-center text-gray-700"><CheckCircle2 className="h-5 w-5 text-emerald-600 mr-3" /> <span>{amenity}</span></div>)}</div>
+            </section>
+            <hr className="border-gray-200 my-8" />
+            <section className="mb-8 hidden sm:block">
+              <h2 className="text-2xl font-semibold mb-6">Location</h2>
+              <Map properties={[{ id: property.id, lat: property.lat || 0, lng: property.lng || 0, title: property.title, price: property.price, sector: property.sector || "" }]} />
+            </section>
+            <hr className="border-gray-200 my-8" />
+            <ReviewSection propertyId={property.id} />
+          </div>
+
+          <div className="relative">
+            <div className="sticky top-28 bg-white border border-gray-200 rounded-2xl p-6 shadow-xl shadow-gray-200/50">
+              <div className="flex items-baseline gap-1 mb-3">
+                <span className="text-3xl font-bold text-gray-900">₹{property.price.toLocaleString("en-IN")}</span>
+                <span className="text-gray-500 font-medium">/ month</span>
+              </div>
+              <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-3 mb-3 text-sm text-purple-900">
+                <div className="font-semibold">NoidaStay Verified Broker Guarantee</div>
+                <div className="mt-2 text-gray-700 leading-relaxed"><strong className="font-semibold text-gray-900">As your Digital Broker, we guarantee:</strong><ul className="list-disc pl-4 mt-1 space-y-0.5"><li>Legal Rent Agreement</li><li>Escrow Deposit Protection</li><li>24h Move-in Support</li></ul></div>
+              </div>
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 mb-4 text-sm text-amber-900">
+                <div className="font-semibold">Brokerage Service Fee ₹499</div>
+                <div className="mt-1 text-gray-700">This covers your e-Stamping, legal paperwork, and deposit protection.</div>
+              </div>
+              
+              <div className="border border-gray-200 rounded-xl mb-6 divide-y divide-gray-200 text-sm">
+                <div className="p-4 bg-gray-50 rounded-t-xl flex justify-between"><span className="font-medium">Move-in Date</span><span className="text-emerald-600 font-medium">Available Now</span></div>
+                <div className="p-4 flex justify-between items-center"><span className="font-medium text-gray-500">Deposit</span><span>1 Month Rent</span></div>
+                <div className="p-4 flex justify-between items-center"><span className="font-medium text-gray-500">Lock-in</span><span>3 Months</span></div>
+              </div>
+
+              <div className="space-y-3">
+                <button onClick={() => router.push(`/my-stay?propertyId=${property.id}`)} className="w-full flex items-center justify-center gap-2 bg-purple-800 hover:bg-purple-900 text-white py-3 rounded-xl font-semibold transition-colors"><ShieldCheck className="h-4 w-4" />Book with NoidaStay</button>
+                
+                {userId && (
+                  <VisitScheduler 
+                    propertyId={property.id}
+                    ownerId={(property as any).owner_id || process.env.NEXT_PUBLIC_DEFAULT_OWNER_ID}
+                    propertyTitle={property.title}
+                    studentId={userId}
+                  />
+                )}
+
+                {userId && property.has_parent_room && (
+                  <ParentStayBooking 
+                    propertyId={property.id}
+                    pricePerNight={Number(property.parent_guest_room_price) || 800}
+                    userId={userId}
+                    propertyTitle={property.title}
+                  />
+                )}
+
+                <button onClick={toggleFavorite} disabled={favLoading} className={`w-full flex items-center justify-center gap-2 border py-3 rounded-xl font-medium transition-colors ${isFavorite ? "bg-red-50 border-red-200 text-red-600" : "bg-white border-gray-300 text-gray-900 hover:bg-gray-50"}`}><Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />{isFavorite ? "Saved to Favorites" : "Save to Favorites"}</button>
+                
+                <button className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-semibold transition-colors text-lg" onClick={handleContactOwner}><MessageCircle className="h-5 w-5" />Contact via WhatsApp</button>
+                
+                <button 
+                  className="w-full flex items-center justify-center gap-2 bg-white border border-blue-200 text-blue-600 py-3 rounded-xl font-semibold transition-colors hover:bg-blue-50" 
+                  onClick={() => setShowChatModal(true)}
+                >
+                  <MessageCircle className="h-5 w-5" /> Ask a Question
+                </button>
+
+                {showChatModal && userId && (
+                  <QuickChatModal
+                    propertyId={property.id}
+                    ownerId={(property as any).owner_id || process.env.NEXT_PUBLIC_DEFAULT_OWNER_ID}
+                    studentId={userId}
+                    propertyTitle={property.title}
+                    onClose={() => setShowChatModal(false)}
+                  />
+                )}
+
+                <button onClick={handleShowNumber} disabled={showPhone || isLoggingNumber} className={`w-full flex items-center justify-center gap-2 bg-white border ${showPhone ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-gray-300 hover:bg-gray-50 text-gray-900"} py-3 rounded-xl font-medium transition-colors`}>{showPhone ? "+91 99999 99999" : isLoggingNumber ? "Loading..." : "Show Number"}</button>
+                
+                <button onClick={() => navigator.clipboard.writeText(window.location.href)} className="w-full flex items-center justify-center gap-2 border border-gray-200 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors"><Share2 className="h-4 w-4" />Share this PG</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+      <LiveActivityTracker propertyId={property.id} remainingRooms={property.remaining_rooms} />
+      <SocialProofPopups />
     </main>
   );
 }

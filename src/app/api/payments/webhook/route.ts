@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { sendDiscordAlert } from "@/lib/alerts/discord";
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +14,11 @@ export async function POST(request: Request) {
       .digest("hex");
 
     if (expectedSignature !== signature) {
+      // Log unauthorized attempt
+      const ip = request.headers.get("x-forwarded-for") || "unknown";
+      await sendDiscordAlert("SECURITY", "Invalid Webhook Signature", `Unauthorized attempt to hit payment webhook from IP: ${ip}`, [
+        { name: "Attempted IP", value: ip, inline: true }
+      ]);
       return NextResponse.json({ success: false, error: "Invalid signature" }, { status: 400 });
     }
 
@@ -38,13 +44,18 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString()
         })
         .eq("razorpay_order_id", orderId)
-        .select()
+        .select("*, profiles(full_name)")
         .single();
 
       if (txError) throw txError;
 
+      // Send Payment Success Alert
+      await sendDiscordAlert("PAYMENT", "Payment Success", `New Escrow deposit of ₹${txData.amount} received!`, [
+        { name: "Student", value: txData.profiles?.full_name || "Unknown", inline: true },
+        { name: "Order ID", value: orderId, inline: true }
+      ]);
+
       // Trigger Post-Payment Automation (Digital Signature Flow)
-      // For MVP, we'll hit our internal API or update a flag that the UI listens to
       await supabase.from("audit_logs").insert({
         user_id: txData.user_id,
         action_type: "PAYMENT_VERIFIED",

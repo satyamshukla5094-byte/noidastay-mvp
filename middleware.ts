@@ -33,9 +33,17 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/favorites/") ||
       pathname === "/profile" ||
       pathname === "/dashboard" ||
-      pathname.startsWith("/dashboard");
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/admin");
 
-    if (isProtected && !user) {
+    if (pathname.startsWith("/admin")) {
+      const ADMIN_EMAIL = "satyamshukla5094@gmail.com";
+      if (!user || user.email !== ADMIN_EMAIL) {
+        const url = req.nextUrl.clone();
+        url.pathname = "/login";
+        return NextResponse.redirect(url);
+      }
+    } else if (isProtected && !user) {
       const url = req.nextUrl.clone();
       url.pathname = "/login";
       return NextResponse.redirect(url);
@@ -49,6 +57,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/favorites/:path*", "/favorites", "/profile", "/dashboard/:path*", "/dashboard"],
+  matcher: ["/favorites/:path*", "/favorites", "/profile", "/dashboard/:path*", "/dashboard", "/admin/:path*"],
 };
 

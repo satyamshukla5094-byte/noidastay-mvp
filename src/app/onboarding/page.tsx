@@ -79,7 +79,7 @@ export default function OnboardingPage() {
       }
     }
 
-    const { error } = await supabase.from("profiles").upsert(updates, { onConflict: ["id"] });
+    const { error } = await supabase.from("profiles").upsert(updates, { onConflict: "id" });
 
     if (error) {
       console.error("Error saving profile:", error.message);

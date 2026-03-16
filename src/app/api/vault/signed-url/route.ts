@@ -28,13 +28,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Owner cannot access student ID before escrow completion" }, { status: 403 });
     }
 
-    const signedUrl = await getSignedUrl({
-      userId,
-      filePath,
-      action: "view",
-      allowedUserIds: [userId],
-      agreementId: agreementId as string | undefined,
-    });
+    const signedUrl = await getSignedUrl(filePath);
 
     return NextResponse.json({ success: true, signedUrl });
   } catch (error: any) {

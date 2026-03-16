@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ShieldCheck, CreditCard, Lock, Info, Loader2, CheckCircle } from "lucide-react";
+import { ShieldCheck, CreditCard, Lock, Info, Loader2, CheckCircle, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Script from "next/script";
+import { useSearchParams } from "next/navigation";
 
 export default function CheckoutPage({ params }: { params: { bookingId: string } }) {
   const [loading, setLoading] = useState(true);
@@ -12,8 +13,10 @@ export default function CheckoutPage({ params }: { params: { bookingId: string }
   const [profile, setProfile] = useState<any>(null);
   const [property, setProperty] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   const BROKERAGE_FEE = 499;
+  const isGroupBooking = searchParams.get("group") === "true";
 
   useEffect(() => {
     async function fetchData() {
@@ -36,23 +39,26 @@ export default function CheckoutPage({ params }: { params: { bookingId: string }
     if (!profile || !property) return;
     setProcessing(true);
 
+    const totalAmount = BROKERAGE_FEE + Number(property.price);
+    const discount = isGroupBooking ? (BROKERAGE_FEE * 0.1) : 0;
+    const finalBrokerage = BROKERAGE_FEE - discount;
+    const finalTotal = finalBrokerage + Number(property.price);
+    
+    const response = await fetch("/api/bookings/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bookingId: params.bookingId,
+        userId: profile.id,
+        amount: totalAmount,
+        type: "security_deposit"
+      }),
+    });
+
+    const orderData = await response.json();
+    if (!orderData.success) throw new Error(orderData.error);
+
     try {
-      const totalAmount = BROKERAGE_FEE + Number(property.price);
-
-      const res = await fetch("/api/payments/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bookingId: params.bookingId,
-          userId: profile.id,
-          amount: totalAmount,
-          type: "security_deposit"
-        }),
-      });
-
-      const orderData = await res.json();
-      if (!orderData.success) throw new Error(orderData.error);
-
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
@@ -102,6 +108,15 @@ export default function CheckoutPage({ params }: { params: { bookingId: string }
           </div>
 
           <div className="p-8">
+            {isGroupBooking && (
+              <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3">
+                <Sparkles className="text-emerald-600" size={20} />
+                <div>
+                  <p className="text-xs font-black text-emerald-700 uppercase tracking-widest">Group Discount Applied!</p>
+                  <p className="text-[10px] text-emerald-600 font-medium">10% off Brokerage Fee for booking with your matched roommate.</p>
+                </div>
+              </div>
+            )}
             <div className="space-y-6">
               <div className="bg-gray-50 rounded-2xl p-6 space-y-4">
                 <div className="flex justify-between items-center text-sm">

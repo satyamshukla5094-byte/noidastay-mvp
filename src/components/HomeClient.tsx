@@ -111,11 +111,10 @@ export default function HomeClient({ initialListings }: { initialListings: Listi
       const matchesQuery =
         !q ||
         p.title.toLowerCase().includes(q) ||
-        (p.sector || "").toLowerCase().includes(q) ||
-        (p.distanceInfo || "").toLowerCase().includes(q);
+        (p.location || "").toLowerCase().includes(q);
       const matchesLocality =
         locality === "All Localities" ||
-        (p.sector || "").toLowerCase().includes(locality.toLowerCase());
+        (p.location || "").toLowerCase().includes(locality.toLowerCase());
       const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
       return matchesQuery && matchesLocality && matchesPrice;
     });
@@ -318,7 +317,7 @@ export default function HomeClient({ initialListings }: { initialListings: Listi
                 >
                   <div className="relative aspect-[4/3] w-full bg-gray-200 overflow-hidden">
                     <Image
-                      src={pg.imageUrl}
+                      src={pg.image_url}
                       alt={pg.title}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -337,7 +336,7 @@ export default function HomeClient({ initialListings }: { initialListings: Listi
                     >
                       <Heart className={`h-4 w-4 ${isFav ? "fill-white" : ""}`} />
                     </button>
-                    {pg.isVerified && (
+                    {pg.is_verified && (
                       <div className="absolute top-3 left-3 bg-emerald-600/95 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
                         Verified
                       </div>
@@ -347,7 +346,7 @@ export default function HomeClient({ initialListings }: { initialListings: Listi
                     <h3 className="font-semibold text-gray-900 line-clamp-2 mb-1">{pg.title}</h3>
                     <div className="flex items-center text-gray-500 text-sm mb-2">
                       <MapPin className="h-3.5 w-3.5 mr-1 flex-shrink-0 text-emerald-600/70" />
-                      <span className="truncate">{pg.sector} · {pg.distanceInfo}</span>
+                      <span className="truncate">{pg.location}</span>
                     </div>
                     <div className="rounded-xl border border-purple-200 bg-purple-50 px-2 py-1 text-[11px] text-purple-800 font-medium mb-2">
                       <span className="font-semibold">NoidaStay Verified</span> • 3x protections: legal agreement, escrow deposit, move-in support
