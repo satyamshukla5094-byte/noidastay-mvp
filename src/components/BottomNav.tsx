@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, Heart, Bell, User } from "lucide-react";
 
-export function BottomNav() {
+export function BottomNav({ userInitials }: { userInitials?: string }) {
   const pathname = usePathname();
 
   const items = [
@@ -20,6 +20,8 @@ export function BottomNav() {
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
+          const isProfile = item.href === "/profile";
+
           return (
             <Link
               key={item.href}
@@ -28,7 +30,13 @@ export function BottomNav() {
                 isActive ? "text-emerald-600" : "hover:text-gray-900"
               }`}
             >
-              <Icon className="h-6 w-6" />
+              {isProfile && userInitials ? (
+                <div className="h-7 w-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-semibold">
+                  {userInitials}
+                </div>
+              ) : (
+                <Icon className="h-6 w-6" />
+              )}
               <span>{item.label}</span>
             </Link>
           );

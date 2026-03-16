@@ -1,6 +1,5 @@
-"use client";
+import FavoritesClient from "./FavoritesClient";
 
-import FavoritesPage from "@/app/dashboard/favorites/page";
-
-export default FavoritesPage;
-
+export default function FavoritesPage() {
+  return <FavoritesClient />;
+}

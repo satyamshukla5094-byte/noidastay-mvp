@@ -9,6 +9,7 @@ type LocalInquiry = {
   propertyId: string;
   method: "whatsapp" | "view_phone";
   at: string;
+  accepted?: boolean;
 };
 
 export default function InquiriesPage() {
@@ -24,6 +25,17 @@ export default function InquiriesPage() {
       setLocalInquiries([]);
     }
   }, []);
+
+  const setAccepted = (idx: number) => {
+    setLocalInquiries((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], accepted: true };
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("noidastay_inquiries", JSON.stringify(next));
+      }
+      return next;
+    });
+  };
 
   const propertiesById = useMemo(() => {
     const map = new Map<string, (typeof MOCK_PROPERTIES)[number]>();
@@ -93,16 +105,15 @@ export default function InquiriesPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center sm:items-end justify-start sm:justify-end">
-                  <span
-                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${
-                      inq.method === "view_phone"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-blue-50 text-blue-700"
-                    }`}
-                  >
+                <div className="flex flex-col sm:flex-row items-start sm:items-end justify-start sm:justify-end gap-2">
+                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${inq.method === "view_phone" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"}`}>
                     {inq.method === "view_phone" ? "Viewed Number" : "Contacted on WhatsApp"}
                   </span>
+                  {inq.accepted ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-600 text-white">✓ Owner Accepted</span>
+                  ) : (
+                    <button onClick={() => setAccepted(index)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-700 text-white hover:bg-slate-600 transition">Accept Inquiry</button>
+                  )}
                 </div>
               </div>
             );

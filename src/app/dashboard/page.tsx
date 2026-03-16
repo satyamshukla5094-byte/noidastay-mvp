@@ -1,11 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, ShieldCheck, Upload, ExternalLink } from "lucide-react";
+import { Plus, ShieldCheck, Upload, ExternalLink, CheckCircle2, CircleDot, Play } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+
+const stepLabels = [
+  "Document Drafted",
+  "eSign Sent",
+  "Stamping Complete",
+  "Deposit Secured",
+];
 
 export default function DashboardOverview() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [ocrUrl, setOcrUrl] = useState("");
+  const [ocrResult, setOcrResult] = useState<any>(null);
+  const [agreementStatus, setAgreementStatus] = useState("");
+  const [step, setStep] = useState(1);
+  const [ttsText, setTtsText] = useState("यह समझौता पत्र किराये की शर्तों और शुल्क को स्पष्ट करता है।");
+  const [ttsUrl, setTtsUrl] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   const [verificationForm, setVerificationForm] = useState({
     aadhaarName: "Test Owner",
     plotNumber: "",
@@ -27,224 +43,321 @@ export default function DashboardOverview() {
         },
       ]);
       if (error) {
-        console.warn("Owner verification insert failed (MVP env):", error.message);
+        console.warn("Owner verification insert failed:", error.message);
       }
     } catch (err) {
-      console.warn("Owner verification exception:", err);
+      console.warn(err);
     } finally {
       setIsSubmittingVerification(false);
     }
   };
 
+  const handleExtractKyc = async () => {
+    if (!ocrUrl) return;
+    try {
+      const resp = await fetch("/api/legal/extract-kyc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_url: ocrUrl }),
+      });
+      const data = await resp.json();
+      setOcrResult(data);
+    } catch (err) {
+      setOcrResult({ error: "Unable to extract from image" });
+    }
+  };
+
+  const handleGenerateAgreement = async () => {
+    setIsGenerating(true);
+    try {
+      const resp = await fetch("/api/legal/generate-agreement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenant_name: "Student Tenant",
+          owner_name: verificationForm.aadhaarName,
+          property_address: "Sector 1, Greater Noida",
+          period_of_stay: "01 Apr 2026 - 30 Sep 2026",
+          monthly_rent: "₹9,499",
+          refundable_deposit: "₹9,499",
+        }),
+      });
+      if (!resp.ok) {
+        setAgreementStatus("Failed to generate agreement.");
+        return;
+      }
+      const buffer = await resp.arrayBuffer();
+      const blob = new Blob([buffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      setAgreementStatus("Generated. Opening PDF...");
+      window.open(url, "_blank");
+    } catch (error) {
+      setAgreementStatus("Error generating agreement.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSpeakHindi = async () => {
+    setIsSpeaking(true);
+    try {
+      const resp = await fetch("/api/legal/speak-hindi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: ttsText }),
+      });
+      const data = await resp.json();
+      if (!data.success || !data.audioBase64) {
+        setTtsUrl("");
+        return;
+      }
+      const blob = new Blob([Uint8Array.from(atob(data.audioBase64), (c) => c.charCodeAt(0))], {
+        type: "audio/mpeg",
+      });
+      const audioUrl = URL.createObjectURL(blob);
+      setTtsUrl(audioUrl);
+      const audio = new Audio(audioUrl);
+      audio.play();
+    } catch (error) {
+      setTtsUrl("");
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
   return (
-    <div className="p-8 max-w-7xl mx-auto w-full">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, Test Owner!</h1>
-          <p className="text-gray-500 mt-1">Here is what is happening with your properties today.</p>
+          <h1 className="text-3xl font-bold text-slate-900">NoidaStay Legal Automation Hub</h1>
+          <p className="mt-1 text-slate-600">Your premium digital broker engine for document workflows.</p>
         </div>
-        <button className="hidden sm:flex items-center px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium transition-colors focus:ring-4 focus:ring-emerald-100">
-          <Plus className="h-5 w-5 mr-2" />
-          Add Property
-        </button>
-      </div>
-
-      <div className="mb-8 border-b border-gray-200">
-        <div className="flex space-x-8">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'overview'
-                ? 'border-emerald-600 text-emerald-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab("verification")}
-            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors flex items-center ${
-              activeTab === 'verification'
-                ? 'border-emerald-600 text-emerald-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-             <ShieldCheck className="h-4 w-4 mr-2" />
-             Verification
-          </button>
+        <div className="flex gap-2">
+          <button className="rounded-xl border border-blue-300 text-blue-700 bg-blue-50 px-3 py-2 text-xs font-semibold">Gov-Tech</button>
+          <button className="rounded-xl border border-amber-300 text-amber-800 bg-amber-50 px-3 py-2 text-xs font-semibold">Trusted</button>
         </div>
       </div>
 
-          {activeTab === "overview" && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {/* Stat Cards */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Total Properties</h3>
-                  <p className="text-3xl font-bold text-gray-900">3</p>
+      <div className="mt-4 bg-white border border-blue-100 rounded-2xl p-4 sm:p-5">
+        <div className="flex flex-wrap gap-2 items-center mb-3">
+          <span className="text-sm font-semibold text-blue-700">Status Tracker</span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">Mobile-friendly</span>
+        </div>
+        <div className="flex flex-col gap-3 sm:gap-0 sm:flex-row sm:justify-between">
+          {stepLabels.map((label, index) => {
+            const active = index <= step;
+            return (
+              <div
+                key={label}
+                className={`flex items-start gap-2 sm:flex-col sm:items-center sm:text-center p-3 rounded-xl border ${
+                  active ? "border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
+                } w-full sm:w-[22%]`}
+              >
+                <div className={`p-2 rounded-full ${active ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"}`}>
+                  {active ? <CheckCircle2 className="h-4 w-4" /> : <CircleDot className="h-4 w-4" />}
                 </div>
-                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Active Leads</h3>
-                  <p className="text-3xl font-bold text-emerald-600">12</p>
-                </div>
-                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">Occupancy Rate</h3>
-                  <p className="text-3xl font-bold text-gray-900">85%</p>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8">
-                <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-gray-900">Recent Leads</h2>
-                  <button className="text-emerald-600 text-sm font-medium hover:underline">View All</button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50/50">
-                      <tr>
-                        <th className="px-6 py-3 font-semibold text-gray-500 text-sm">Property</th>
-                        <th className="px-6 py-3 font-semibold text-gray-500 text-sm">Student Phone</th>
-                        <th className="px-6 py-3 font-semibold text-gray-500 text-sm">Status</th>
-                        <th className="px-6 py-3 font-semibold text-gray-500 text-sm">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      <tr className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-gray-900">Premium Boys PG</p>
-                          <p className="text-sm text-gray-500">Knowledge Park III</p>
-                        </td>
-                        <td className="px-6 py-4 font-medium">+91 98765 43210</td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                            Interested
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">2 hours ago</td>
-                      </tr>
-                      <tr className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <p className="font-medium text-gray-900">Cozy Girls Apartment</p>
-                          <p className="text-sm text-gray-500">Alpha 1</p>
-                        </td>
-                        <td className="px-6 py-4 font-medium">+91 87654 32109</td>
-                        <td className="px-6 py-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            Contacted
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">Yesterday</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
-
-          {activeTab === "verification" && (
-            <form
-              onSubmit={handleVerificationSubmit}
-              className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8"
-            >
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Property Verification</h2>
-                <p className="text-gray-500 text-sm max-w-2xl">
-                  Link your documents and UP Bhulekh record so that our team can grant the
-                  &ldquo;Verified&rdquo; badge on your listings. This uses the{" "}
-                  <span className="font-semibold">owner_verifications</span> record in Supabase.
-                </p>
-              </div>
-
-              <div className="space-y-8 max-w-3xl">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Owner Aadhaar Name
-                  </label>
-                  <input
-                    type="text"
-                    value={verificationForm.aadhaarName}
-                    onChange={(e) =>
-                      setVerificationForm((prev) => ({ ...prev, aadhaarName: e.target.value }))
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 outline-none"
-                    placeholder="Enter full name as per Aadhaar"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="border border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
-                    <Upload className="h-8 w-8 text-gray-400 mb-3" />
-                    <p className="font-medium text-gray-900 mb-1">Electricity Bill</p>
-                    <p className="text-xs text-gray-500 max-w-[200px] text-center">
-                      Upload latest bill via dashboard or share a link in notes to match UP Bhulekh.
-                    </p>
-                  </div>
-
-                  <div className="border border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
-                    <Upload className="h-8 w-8 text-gray-400 mb-3" />
-                    <p className="font-medium text-gray-900 mb-1">Property Tax Receipt</p>
-                    <p className="text-xs text-gray-500 max-w-[200px] text-center">
-                      Ensure plot details match the UP Bhulekh record you share below.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-5 bg-blue-50/50 border border-blue-100 rounded-xl space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-sm font-semibold text-blue-900">
-                      Plot / Khata Number
-                    </label>
-                    <a
-                      href="https://upbhulekh.gov.in/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-100 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      Verify on UP Bhulekh <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                  <input
-                    type="text"
-                    value={verificationForm.plotNumber}
-                    onChange={(e) =>
-                      setVerificationForm((prev) => ({ ...prev, plotNumber: e.target.value }))
-                    }
-                    className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
-                    placeholder="e.g. 129/A"
-                    required
-                  />
-                  <label className="block text-sm font-semibold text-blue-900 mt-3">
-                    UP Bhulekh Record URL
-                  </label>
-                  <input
-                    type="url"
-                    value={verificationForm.bhulekhUrl}
-                    onChange={(e) =>
-                      setVerificationForm((prev) => ({ ...prev, bhulekhUrl: e.target.value }))
-                    }
-                    className="w-full px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none"
-                    placeholder="Paste the exact URL of your land record from upbhulekh.gov.in"
-                  />
-                  <p className="text-xs text-blue-600/80">
-                    These details are stored in the <code>owner_verifications</code> table for
-                    admin review.
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-gray-100">
-                  <button
-                    type="submit"
-                    disabled={isSubmittingVerification}
-                    className="px-6 py-2.5 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors shadow-sm disabled:bg-emerald-400 disabled:cursor-not-allowed"
-                  >
-                    {isSubmittingVerification ? "Submitting..." : "Submit for Verification"}
-                  </button>
+                  <p className="text-xs font-semibold text-slate-700">{label}</p>
+                  {index === step && <p className="text-[11px] text-blue-600">Current</p>}
                 </div>
               </div>
-            </form>
-          )}
+            );
+          })}
+        </div>
+        <div className="mt-3 flex gap-2 flex-wrap">
+          <button
+            onClick={() => setStep((prev) => Math.max(0, prev - 1))}
+            className="text-xs font-medium px-3 py-1.5 border border-slate-300 rounded-lg"
+          >
+            Back
+          </button>
+          <button
+            onClick={() => setStep((prev) => Math.min(stepLabels.length - 1, prev + 1))}
+            className="text-xs font-semibold px-3 py-1.5 bg-blue-600 text-white rounded-lg"
+          >
+            Next Step
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Sarvam OCR Pipeline</h2>
+              <p className="text-sm text-slate-600">Extract KYC fields from Aadhaar image quickly.</p>
+            </div>
+            <Upload className="h-5 w-5 text-slate-400" />
+          </div>
+          <div className="mt-3">
+            <input
+              type="url"
+              value={ocrUrl}
+              onChange={(e) => setOcrUrl(e.target.value)}
+              placeholder="Paste Aadhaar image URL"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleExtractKyc}
+              className="mt-2 inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600 text-white text-sm hover:bg-blue-700"
+            >
+              Extract KYC
+            </button>
+
+            {ocrResult && (
+              <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm">
+                <div><strong>Full Name:</strong> {ocrResult.data?.full_name ?? ocrResult.data?.name ?? "-"}</div>
+                <div><strong>ID:</strong> {ocrResult.data?.id_number ?? "-"}</div>
+                <div><strong>Address:</strong> {ocrResult.data?.permanent_address ?? "-"}</div>
+                {ocrResult.error && <div className="mt-1 text-red-600">{ocrResult.error}</div>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-2xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Dynamic Agreement Generator</h2>
+              <p className="text-sm text-slate-600">Generate professional legal PDF instantly.</p>
+            </div>
+            <ShieldCheck className="h-5 w-5 text-emerald-500" />
+          </div>
+          <div className="mt-3">
+            <button
+              onClick={handleGenerateAgreement}
+              disabled={isGenerating}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 disabled:opacity-70"
+            >
+              <span>Generate Agreement PDF</span>
+            </button>
+            {agreementStatus && <p className="mt-2 text-sm text-slate-600">{agreementStatus}</p>}
+          </div>
+          <div className="mt-4 border-t border-slate-200 pt-3 text-xs text-slate-500">
+            Includes stay period, security deposit clause, and NoidaStay Brokerage terms.
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 bg-white border border-gray-200 rounded-2xl p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold">Owner Explanation Tool (Hindi TTS)</h2>
+            <p className="text-sm text-slate-600">Speak the major agreement points so the owner can review clearly.</p>
+          </div>
+          <button
+            onClick={handleSpeakHindi}
+            disabled={isSpeaking}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700"
+          >
+            <Play className="h-4 w-4" /> {isSpeaking ? "Speaking..." : "Speak in Hindi"}
+          </button>
+        </div>
+        <textarea
+          value={ttsText}
+          onChange={(e) => setTtsText(e.target.value)}
+          rows={3}
+          className="mt-3 w-full border border-slate-300 rounded-xl p-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+        />
+        {ttsUrl && (
+          <audio controls className="mt-2 w-full">
+            <source src={ttsUrl} type="audio/mpeg" />
+            Your browser does not support audio.
+          </audio>
+        )}
+      </div>
+
+      <div className="mt-6 border-t border-slate-200 pt-4">
+        <div className="flex flex-wrap gap-2 mb-3 text-xs font-semibold text-slate-600 uppercase tracking-[0.14em]">
+          <span className="px-2 py-1 rounded-full bg-slate-100">Step-by-step automation</span>
+          <span className="px-2 py-1 rounded-full bg-amber-100 text-amber-700">Student-ready, mobile UI</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+            <h3 className="text-sm font-semibold text-blue-800">Legal Automation in 2 minutes</h3>
+            <p className="text-sm text-slate-700 mt-1">Draft, review, sign, and deliver agreement without multiple trips to Pare Chowk.</p>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+            <h3 className="text-sm font-semibold text-emerald-800">Brokerage Efficiency</h3>
+            <p className="text-sm text-slate-700 mt-1">Digital process for KYC + legal docs + owner explanation builds trust quickly.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 bg-white border border-gray-200 rounded-2xl p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Document & KYC Workflow</h2>
+            <p className="text-sm text-slate-600">Owner verification and onboarding are now one flow.</p>
+          </div>
+          <div className="flex text-xs gap-2">
+            <span className="px-2 py-1 rounded-full border border-indigo-200 text-indigo-700">Draft</span>
+            <span className="px-2 py-1 rounded-full border border-amber-200 text-amber-700">Stamp</span>
+            <span className="px-2 py-1 rounded-full border border-emerald-200 text-emerald-700">Deposit</span>
+          </div>
+        </div>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+            <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">1. Draft</div>
+            <p className="text-xs text-slate-600 mt-1">Create legal agreement and store copy.</p>
+          </div>
+          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+            <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">2. eSign</div>
+            <p className="text-xs text-slate-600 mt-1">Send to student and owner by email/WhatsApp link.</p>
+          </div>
+          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+            <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">3. Stamping</div>
+            <p className="text-xs text-slate-600 mt-1">Confirm stamping status with admin and owner.</p>
+          </div>
+        </div>
+      </div>
+
+      {activeTab === "verification" && (
+        <form
+          onSubmit={handleVerificationSubmit}
+          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mt-6"
+        >
+          <h2 className="text-lg font-semibold text-slate-900 mb-3">Property Verification</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm text-slate-700 font-medium">Owner Aadhaar Name</label>
+              <input
+                type="text"
+                value={verificationForm.aadhaarName}
+                onChange={(e) => setVerificationForm((prev) => ({ ...prev, aadhaarName: e.target.value }))}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm text-slate-700 font-medium">Plot / Khata Number</label>
+              <input
+                type="text"
+                value={verificationForm.plotNumber}
+                onChange={(e) => setVerificationForm((prev) => ({ ...prev, plotNumber: e.target.value }))}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                required
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="text-sm text-slate-700 font-medium">UP Bhulekh URL</label>
+            <input
+              type="url"
+              value={verificationForm.bhulekhUrl}
+              onChange={(e) => setVerificationForm((prev) => ({ ...prev, bhulekhUrl: e.target.value }))}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isSubmittingVerification}
+            className="mt-4 rounded-xl bg-emerald-600 text-white px-4 py-2.5 font-semibold hover:bg-emerald-700"
+          >
+            {isSubmittingVerification ? "Submitting..." : "Submit Verification"}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

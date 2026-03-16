@@ -14,6 +14,12 @@ export default function LoginPage() {
   const router = useRouter();
 
   const fullPhone = `+91${phoneNumber}`;
+  const oauthRedirectTo =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/auth/callback`
+      : process.env.NEXT_PUBLIC_SITE_URL
+      ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+      : undefined;
 
   const handleContinue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +174,7 @@ export default function LoginPage() {
                   await supabase.auth.signInWithOAuth({
                     provider: "google",
                     options: {
-                      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/profile` : undefined,
+                      redirectTo: oauthRedirectTo,
                     },
                   });
                 } catch (err) {
@@ -189,7 +195,7 @@ export default function LoginPage() {
                   await supabase.auth.signInWithOAuth({
                     provider: "facebook",
                     options: {
-                      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/profile` : undefined,
+                      redirectTo: oauthRedirectTo,
                     },
                   });
                 } catch (err) {
@@ -210,7 +216,7 @@ export default function LoginPage() {
                   await supabase.auth.signInWithOAuth({
                     provider: "apple",
                     options: {
-                      redirectTo: typeof window !== "undefined" ? `${window.location.origin}/profile` : undefined,
+                      redirectTo: oauthRedirectTo,
                     },
                   });
                 } catch (err) {

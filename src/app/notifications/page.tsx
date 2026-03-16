@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell } from "lucide-react";
+import { Bell, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const mockNotifications = [
   {
@@ -18,18 +19,24 @@ const mockNotifications = [
 ];
 
 export default function NotificationsPage() {
+  const router = useRouter();
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gray-50 pb-24">
       <div className="max-w-3xl mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
           <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
             <Bell className="h-5 w-5 text-emerald-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-            <p className="text-sm text-gray-500">
-              Stay on top of inquiries, verification, and PG updates.
-            </p>
+            <p className="text-sm text-gray-500">Stay on top of inquiries, verification, and PG updates.</p>
           </div>
         </div>
 
@@ -46,4 +53,5 @@ export default function NotificationsPage() {
     </main>
   );
 }
+
 

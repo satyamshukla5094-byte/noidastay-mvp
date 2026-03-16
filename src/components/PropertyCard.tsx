@@ -106,12 +106,16 @@ export function PropertyCard({
           </div>
         </div>
 
-        <div className="mt-2 flex flex-col gap-3">
           <div className="flex items-baseline gap-1">
             <span className="text-xl font-bold text-emerald-600">
               ₹{price.toLocaleString("en-IN")}
             </span>
             <span className="text-sm text-gray-500 font-medium">/mo</span>
+          </div>
+
+          <div className="mt-2 rounded-xl border border-violet-200 bg-violet-50/60 p-2 text-xs text-violet-700 font-medium">
+            <div className="flex items-center gap-1"><span className="text-yellow-600">★</span> NoidaStay Verified Broker</div>
+            <div className="mt-1 text-[11px] text-gray-600">Brokerage Fee ₹499 covers legal paperwork, escrow protection, and move-in support.</div>
           </div>
 
           <div 

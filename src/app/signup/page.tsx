@@ -31,7 +31,7 @@ export default function SignupPage() {
     try {
       // Generate a temporary password since the design doesn't include it.
       const tempPassword = `noidastay-${Date.now().toString(36)}`;
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: tempPassword,
         options: {
@@ -44,6 +44,19 @@ export default function SignupPage() {
       });
       if (error) {
         console.warn("Supabase sign-up failed (MVP env):", error.message);
+      } else if (data.user) {
+        // Create or update profile row linked to auth user
+        try {
+          await supabase.from("profiles").upsert(
+            {
+              id: data.user.id,
+              full_name: `${formData.firstName} ${formData.lastName}`.trim(),
+            },
+            { onConflict: "id" }
+          );
+        } catch (profileErr) {
+          console.warn("Supabase profile upsert failed (check profiles schema):", profileErr);
+        }
       }
     } catch (err) {
       console.warn("Supabase sign-up exception:", err);
